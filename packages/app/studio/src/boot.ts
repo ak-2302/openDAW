@@ -161,10 +161,13 @@ export const boot = async ({workersUrl, workletsUrl, wasmProcessorUrl, wasmOffli
         }, window.location.origin)
     })
     const resonanceParams = new URLSearchParams(window.location.search)
+    const resonanceProjectCommit = resonanceParams.get("songCommit")
     if (resonanceParams.get("resonanceSong") === "night-transit"
-        && resonanceParams.get("projectPath") === "project/main.od") {
+        && resonanceParams.get("projectPath") === "project/main.od"
+        && resonanceProjectCommit !== null
+        && /^[0-9a-f]{40}$/i.test(resonanceProjectCommit)) {
         void (async () => {
-            const projectUrl = "https://raw.githubusercontent.com/ak-2302/song-demo/7d2ecadcb0675480940bb2f5adf04478e8c5d24d/project/main.od"
+            const projectUrl = `https://raw.githubusercontent.com/ak-2302/song-demo/${resonanceProjectCommit}/project/main.od`
             try {
                 const response = await fetch(projectUrl)
                 if (!response.ok) {throw new Error(`project download failed: ${response.status}`)}
