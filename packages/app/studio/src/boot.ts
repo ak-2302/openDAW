@@ -6,7 +6,7 @@ if (localStorage.getItem("opendaw-suppress-unload-guard") !== null) {
     window.addEventListener("beforeunload", event => event.stopImmediatePropagation(), {capture: true})
 }
 import {App} from "@/ui/App.tsx"
-import {isDefined, panic, Progress, RuntimeNotification, RuntimeNotifier, UUID} from "@opendaw/lib-std"
+import {isDefined, Option, panic, Progress, RuntimeNotification, RuntimeNotifier, UUID} from "@opendaw/lib-std"
 import {StudioService} from "@/service/StudioService"
 import {SampleMetaData, SoundfontMetaData} from "@opendaw/studio-adapters"
 import {Dialogs} from "@/ui/components/dialogs.tsx"
@@ -160,6 +160,24 @@ export const boot = async ({workersUrl, workletsUrl, wasmProcessorUrl, wasmOffli
             snapshot: {contentBase64: btoa(binary), format: "opendaw-bundle-v1"}
         }, window.location.origin)
     })
+    const resonanceParams = new URLSearchParams(window.location.search)
+    if (resonanceParams.get("resonanceSong") === "night-transit"
+        && resonanceParams.get("projectPath") === "project/main.od"
+        && resonanceParams.get("engineCommit") === "d50ab86791de804aa677ec2b920609f50c5a9178") {
+        void (async () => {
+            const projectUrl = "https://raw.githubusercontent.com/ak-2302/song-demo/3940d1a739445f710d982147da9052072352a658/project/main.od"
+            try {
+                const response = await fetch(projectUrl)
+                if (!response.ok) {throw new Error(`project download failed: ${response.status}`)}
+                const profile = await ProjectBundle.decode(service, await response.arrayBuffer())
+                await profile.saveAs(profile.meta)
+                service.projectProfileService.setValue(Option.wrap(profile))
+                console.info("re:sonance project loaded", projectUrl)
+            } catch (error) {
+                console.error("re:sonance project load failed", error)
+            }
+        })()
+    }
     StudioShortcutManager.install(service)
     if (isDefined(context.playbackStats)) {
         new BufferUnderrunDetector(context.playbackStats, service.engine)
