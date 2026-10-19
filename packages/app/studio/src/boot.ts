@@ -6,7 +6,7 @@ if (localStorage.getItem("opendaw-suppress-unload-guard") !== null) {
     window.addEventListener("beforeunload", event => event.stopImmediatePropagation(), {capture: true})
 }
 import {App} from "@/ui/App.tsx"
-import {isDefined, Option, panic, Progress, RuntimeNotification, RuntimeNotifier, UUID} from "@opendaw/lib-std"
+import {isDefined, panic, Progress, RuntimeNotification, RuntimeNotifier, UUID} from "@opendaw/lib-std"
 import {StudioService} from "@/service/StudioService"
 import {SampleMetaData, SoundfontMetaData} from "@opendaw/studio-adapters"
 import {Dialogs} from "@/ui/components/dialogs.tsx"
@@ -40,7 +40,7 @@ import {ErrorHandler} from "@/errors/ErrorHandler.ts"
 import {AudioData} from "@opendaw/lib-dsp"
 import {ChainedSampleProvider, ChainedSoundfontProvider, ChainedWclapProvider} from "@opendaw/studio-p2p"
 import {IconSymbol, initializeColors, setColorScheme} from "@opendaw/studio-enums"
-import {ProjectBundle, StudioPreferences, WclapStorage} from "@opendaw/studio-core"
+import {Project, ProjectBundle, StudioPreferences, WclapStorage} from "@opendaw/studio-core"
 import {StudioShortcutManager} from "@/service/StudioShortcutManager"
 import {Tour} from "@/ui/tour/Tour"
 import {Menu} from "@/ui/components/Menu"
@@ -171,9 +171,8 @@ export const boot = async ({workersUrl, workletsUrl, wasmProcessorUrl, wasmOffli
             try {
                 const response = await fetch(projectUrl)
                 if (!response.ok) {throw new Error(`project download failed: ${response.status}`)}
-                const profile = await ProjectBundle.decode(service, await response.arrayBuffer())
-                await profile.saveAs(profile.meta)
-                service.projectProfileService.setValue(Option.wrap(profile))
+                const project = await Project.loadAnyVersion(service, await response.arrayBuffer())
+                service.projectProfileService.setProject(project, "Night Transit")
                 console.info("re:sonance project loaded", projectUrl)
             } catch (error) {
                 console.error("re:sonance project load failed", error)
