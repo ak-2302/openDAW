@@ -138,12 +138,15 @@ export const boot = async ({workersUrl, workletsUrl, wasmProcessorUrl, wasmOffli
     const service: StudioService = new StudioService(context, audioWorklets.value, audioDevices,
         sampleManager, soundfontManager, chainedSampleProvider, chainedSoundfontProvider, chainedWclapProvider,
         cloudAuthManager, buildInfo)
+    const resonancePlatformOrigin = "https://resonance.xn--n8jl2g.xn--q9jyb4c"
     window.addEventListener("message", async event => {
-        if (event.origin !== window.location.origin || event.data?.type !== "resonance:request-project-snapshot") {return}
+        if (event.origin !== resonancePlatformOrigin || event.source !== window.opener || event.data?.type !== "resonance:request-project-snapshot") {return}
+        const source = event.source
+        if (!(source instanceof Window)) {return}
         if (event.data.songId !== "night-transit") {return}
         const option = service.projectProfileService.getValue()
         if (option.isEmpty()) {
-            window.postMessage({type: "resonance:project-snapshot-error", songId: event.data.songId, error: "No open project"}, window.location.origin)
+            source.postMessage({type: "resonance:project-snapshot-error", songId: event.data.songId, error: "No open project"}, event.origin)
             return
         }
         const arrayBuffer = await ProjectBundle.encode(option.unwrap(), Progress.Empty)
@@ -153,12 +156,12 @@ export const boot = async ({workersUrl, workletsUrl, wasmProcessorUrl, wasmOffli
         for (let offset = 0; offset < bytes.length; offset += chunk) {
             binary += String.fromCharCode(...bytes.subarray(offset, offset + chunk))
         }
-        window.postMessage({
+        source.postMessage({
             type: "resonance:project-snapshot",
             songId: event.data.songId,
             snapshotId: `opendaw-${Date.now()}`,
             snapshot: {contentBase64: btoa(binary), format: "opendaw-bundle-v1"}
-        }, window.location.origin)
+        }, event.origin)
     })
     const resonanceParams = new URLSearchParams(window.location.search)
     const resonanceProjectCommit = resonanceParams.get("songCommit")
