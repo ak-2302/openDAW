@@ -40,7 +40,7 @@ import {ErrorHandler} from "@/errors/ErrorHandler.ts"
 import {AudioData} from "@opendaw/lib-dsp"
 import {ChainedSampleProvider, ChainedSoundfontProvider, ChainedWclapProvider} from "@opendaw/studio-p2p"
 import {IconSymbol, initializeColors, setColorScheme} from "@opendaw/studio-enums"
-import {StudioPreferences, WclapStorage} from "@opendaw/studio-core"
+import {ProjectBundle, StudioPreferences, WclapStorage} from "@opendaw/studio-core"
 import {StudioShortcutManager} from "@/service/StudioShortcutManager"
 import {Tour} from "@/ui/tour/Tour"
 import {Menu} from "@/ui/components/Menu"
@@ -138,6 +138,28 @@ export const boot = async ({workersUrl, workletsUrl, wasmProcessorUrl, wasmOffli
     const service: StudioService = new StudioService(context, audioWorklets.value, audioDevices,
         sampleManager, soundfontManager, chainedSampleProvider, chainedSoundfontProvider, chainedWclapProvider,
         cloudAuthManager, buildInfo)
+    window.addEventListener("message", async event => {
+        if (event.origin !== window.location.origin || event.data?.type !== "resonance:request-project-snapshot") {return}
+        if (event.data.songId !== "night-transit") {return}
+        const option = service.projectProfileService.getValue()
+        if (option.isEmpty()) {
+            window.postMessage({type: "resonance:project-snapshot-error", songId: event.data.songId, error: "No open project"}, window.location.origin)
+            return
+        }
+        const arrayBuffer = await ProjectBundle.encode(option.unwrap(), Progress.Empty)
+        const bytes = new Uint8Array(arrayBuffer)
+        let binary = ""
+        const chunk = 0x8000
+        for (let offset = 0; offset < bytes.length; offset += chunk) {
+            binary += String.fromCharCode(...bytes.subarray(offset, offset + chunk))
+        }
+        window.postMessage({
+            type: "resonance:project-snapshot",
+            songId: event.data.songId,
+            snapshotId: `opendaw-${Date.now()}`,
+            snapshot: {contentBase64: btoa(binary), format: "opendaw-bundle-v1"}
+        }, window.location.origin)
+    })
     StudioShortcutManager.install(service)
     if (isDefined(context.playbackStats)) {
         new BufferUnderrunDetector(context.playbackStats, service.engine)
